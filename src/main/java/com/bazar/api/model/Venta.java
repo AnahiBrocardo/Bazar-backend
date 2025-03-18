@@ -1,5 +1,6 @@
 package com.bazar.api.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 
 import java.util.List;
@@ -12,8 +13,13 @@ public class Venta {
     private Long id_venta;
     private Long codigo_venta;
     private Double total_venta;
+    @OneToMany(mappedBy = "venta")
+    @JsonManagedReference
     private List<Producto> lista_productos;
-    private Cliente cliente;
+    @ManyToOne
+    @JoinColumn(name="cliente_id")
+    private Cliente cliente;// muchas ventas están asociadas con un único "cliente"
+    @Enumerated(EnumType.STRING)
     private Estado estado_venta;
 
     public Venta() {
@@ -41,6 +47,10 @@ public class Venta {
 
     public Estado getEstado_venta() {
         return estado_venta;
+    }
+
+    public void setId_venta(Long id_venta) {
+        this.id_venta = id_venta;
     }
 
     public void setCodigo_venta(Long codigo_venta) {

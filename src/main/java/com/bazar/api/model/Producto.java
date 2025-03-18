@@ -1,5 +1,6 @@
 package com.bazar.api.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import org.springframework.boot.autoconfigure.batch.BatchTransactionManager;
 
@@ -20,11 +21,15 @@ public class Producto {
     private LocalDateTime fechaEliminacion;
     private String descripcion;
     private String url_imagen;
+    @ManyToOne
+    @JoinColumn (name="venta_id")
+    @JsonBackReference
+    private Venta venta;
 
     public Producto() {
     }
 
-    public Producto(Long id_venta, Long codigoProducto, String nombreProducto, String marca, Double costo, int cantidad_disponible, boolean disponible, LocalDateTime fechaEliminacion, String descripcion, String url_imagen) {
+    public Producto(Long id_venta, Long codigoProducto, String nombreProducto, String marca, Double costo, int cantidad_disponible, boolean disponible, LocalDateTime fechaEliminacion, String descripcion, String url_imagen, Venta venta) {
         this.id_venta = id_venta;
         this.codigoProducto = codigoProducto;
         this.nombreProducto = nombreProducto;
@@ -35,6 +40,7 @@ public class Producto {
         this.fechaEliminacion = fechaEliminacion;
         this.descripcion = descripcion;
         this.url_imagen = url_imagen;
+        this.venta = venta;
     }
 
     public Long getId_venta() {
@@ -77,6 +83,15 @@ public class Producto {
         return url_imagen;
     }
 
+    public Venta getVenta() {
+        return venta;
+    }
+
+
+    public void setId_venta(Long id_venta) {
+        this.id_venta = id_venta;
+    }
+
     public void setCodigoProducto(Long codigoProducto) {
         this.codigoProducto = codigoProducto;
     }
@@ -111,5 +126,9 @@ public class Producto {
 
     public void setUrl_imagen(String url_imagen) {
         this.url_imagen = url_imagen;
+    }
+
+    public void setVenta(Venta venta) {
+        this.venta = venta;
     }
 }
