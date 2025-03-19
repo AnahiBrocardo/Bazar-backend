@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import org.springframework.boot.autoconfigure.batch.BatchTransactionManager;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Entity
 public class Producto {
@@ -18,7 +18,7 @@ public class Producto {
     private Double costo;
     private int cantidad_disponible;
     private boolean disponible;
-    private LocalDateTime fechaEliminacion;
+    private LocalDate fechaEliminacion;
     private String descripcion;
     private String url_imagen;
     @ManyToOne
@@ -29,7 +29,7 @@ public class Producto {
     public Producto() {
     }
 
-    public Producto(Long id_venta, Long codigoProducto, String nombreProducto, String marca, Double costo, int cantidad_disponible, boolean disponible, LocalDateTime fechaEliminacion, String descripcion, String url_imagen, Venta venta) {
+    public Producto(Long id_venta, Long codigoProducto, String nombreProducto, String marca, Double costo, int cantidad_disponible, boolean disponible, LocalDate fechaEliminacion, String descripcion, String url_imagen, Venta venta) {
         this.id_venta = id_venta;
         this.codigoProducto = codigoProducto;
         this.nombreProducto = nombreProducto;
@@ -71,7 +71,7 @@ public class Producto {
         return disponible;
     }
 
-    public LocalDateTime getFechaEliminacion() {
+    public LocalDate getFechaEliminacion() {
         return fechaEliminacion;
     }
 
@@ -116,7 +116,7 @@ public class Producto {
         this.disponible = disponible;
     }
 
-    public void setFechaEliminacion(LocalDateTime fechaEliminacion) {
+    public void setFechaEliminacion(LocalDate fechaEliminacion) {
         this.fechaEliminacion = fechaEliminacion;
     }
 
