@@ -66,7 +66,7 @@ public class ClienteService implements IClienteService {
         ApiRespuesta<List<Cliente>> respuesta;
 
         if(clientes.isEmpty()){
-            respuesta= new ApiRespuesta<>(false, "Clientes no encontrados", null);
+            respuesta= new ApiRespuesta<>(false, "No se encontraron clientes", clientes);
         }else{
             respuesta= new ApiRespuesta<>(true, "Clientes obtenidos correctamente", clientes);
         }

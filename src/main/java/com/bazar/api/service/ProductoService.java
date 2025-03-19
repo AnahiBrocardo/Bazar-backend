@@ -68,7 +68,7 @@ public class ProductoService implements IProductoService{
         ApiRespuesta<List<Producto>> respuesta;
 
         if (productos.isEmpty()) {
-            respuesta= new ApiRespuesta<List<Producto>>(false, "Productos no encontrados", null);
+            respuesta= new ApiRespuesta<List<Producto>>(false, "No se encontraron productos", null);
         }else{
             respuesta=new ApiRespuesta<List<Producto>>(true, "Productos obtenidos correctamente", productos);
         }
