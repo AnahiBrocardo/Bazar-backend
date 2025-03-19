@@ -6,6 +6,7 @@ import com.bazar.api.repository.IProductoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -24,7 +25,8 @@ public class ProductoService implements IProductoService{
             productoRepository.save(producto);
             respuesta= new ApiRespuesta<>(true, "Producto creado correctamente", producto);
         }catch(Exception e){
-            respuesta= new ApiRespuesta<>(true, "Error al crear el producto", producto);
+            System.out.println("Error al crear el producto: " + e.getMessage());
+            respuesta= new ApiRespuesta<>(false, "Error al crear el producto", producto);
         }
         return respuesta;
     }
@@ -52,7 +54,7 @@ public class ProductoService implements IProductoService{
         ApiRespuesta<List<Producto>> respuesta;
 
         if (productosDisponibles.isEmpty()) {
-            respuesta= new ApiRespuesta<List<Producto>>(false, "Productos no encontrados", null);
+            respuesta= new ApiRespuesta<>(false, "Productos no encontrados", productosDisponibles);
         }else{
             respuesta=new ApiRespuesta<List<Producto>>(true, "Productos obtenidos correctamente", productosDisponibles);
         }
@@ -76,18 +78,42 @@ public class ProductoService implements IProductoService{
 
     @Override
     public ApiRespuesta<Producto> editarProducto(Long id, Producto producto) {
-        return null;
+        ApiRespuesta<Producto> respuesta;
+        Optional<Producto> productoExistenteOpt = productoRepository.findById(id); // puede almacenar un producto o estar vacío si el producto no existe
+
+        if (productoExistenteOpt.isEmpty()) {
+            respuesta= new ApiRespuesta<>(false, "El producto no existe", null);
+        }else{
+            Producto productoExistente = productoExistenteOpt.get();
+
+            // Se actualizan todos los campos, menos el id
+            productoExistente.setNombreProducto(producto.getNombreProducto());
+            productoExistente.setMarca(producto.getMarca());
+            productoExistente.setCosto(producto.getCosto());
+            productoExistente.setCantidad_disponible(producto.getCantidad_disponible());
+            productoExistente.setDescripcion(producto.getDescripcion());
+            productoExistente.setUrl_imagen(producto.getUrl_imagen());
+
+            productoRepository.save(productoExistente);
+            respuesta= new ApiRespuesta<>(true, "Producto actualizado correctamente", productoExistente);
+        }
+
+     return respuesta;
     }
 
-    @Override
-    public ApiRespuesta<Producto> eliminarProducto(Long id) {
-        ApiRespuesta<Producto> respuesta;
 
-        try{
-            productoRepository.deleteById(id);
-            respuesta= new ApiRespuesta<Producto>(true, "Producto eliminado correctamente", productoRepository.findById(id).get());
-        }catch(Exception e){
-            respuesta= new ApiRespuesta<Producto>(false,"Error al eliminar el producto", productoRepository.findById(id).get());
+    @Override
+    public ApiRespuesta<Producto> eliminarProducto(Long id) { //eliminado logico
+        ApiRespuesta<Producto> respuesta;
+        Producto productoAeliminar= productoRepository.findById(id).orElse(null);
+
+        if(productoAeliminar!=null){
+            productoAeliminar.setDisponible(false);
+            productoAeliminar.setFechaEliminacion(LocalDate.now());
+            productoRepository.save(productoAeliminar);
+            respuesta= new ApiRespuesta<>(true, "Producto eliminado correctamente", productoAeliminar);
+        }else{
+            respuesta= new ApiRespuesta<>(false,"Error al eliminar el producto", null);
         }
         return respuesta;
     }
@@ -104,9 +130,9 @@ public class ProductoService implements IProductoService{
         }
 
         if (productos.isEmpty()) {
-            respuesta= new ApiRespuesta<List<Producto>>(false, "No se encontraron productos con esa cantidad en stock", null);
+            respuesta= new ApiRespuesta<>(false, "No se encontraron productos con esa cantidad en stock", null);
         }else{
-            respuesta=new ApiRespuesta<List<Producto>>(true, "Productos con menos stock obtenidos correctamente", productos);
+            respuesta=new ApiRespuesta<>(true, "Productos con menos stock obtenidos correctamente", productos);
         }
 
         return  respuesta;
