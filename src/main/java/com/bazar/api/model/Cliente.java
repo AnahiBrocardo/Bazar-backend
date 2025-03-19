@@ -3,7 +3,7 @@ package com.bazar.api.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 
 @Entity
@@ -16,7 +16,7 @@ public class Cliente {
     private String apellido;
     private String dni;
     private boolean disponible;
-    private LocalDateTime fechaEliminacion;
+    private LocalDate fechaEliminacion;
     @OneToMany(mappedBy = "cliente")
     @JsonIgnore
     private List<Venta> ventas; //Un cliente tiene muchas ventas asociadas
@@ -24,7 +24,7 @@ public class Cliente {
     public Cliente() {
     }
 
-    public Cliente(Long id_cliente, String nombre, String apellido, String dni, boolean disponible, LocalDateTime fechaEliminacion, List<Venta> ventas) {
+    public Cliente(Long id_cliente, String nombre, String apellido, String dni, boolean disponible, LocalDate fechaEliminacion, List<Venta> ventas) {
         this.id_cliente = id_cliente;
         this.nombre = nombre;
         this.apellido = apellido;
@@ -54,7 +54,7 @@ public class Cliente {
         return disponible;
     }
 
-    public LocalDateTime getFechaEliminacion() {
+    public LocalDate getFechaEliminacion() {
         return fechaEliminacion;
     }
 
@@ -83,7 +83,7 @@ public class Cliente {
         this.disponible = disponible;
     }
 
-    public void setFechaEliminacion(LocalDateTime fechaEliminacion) {
+    public void setFechaEliminacion(LocalDate fechaEliminacion) {
         this.fechaEliminacion = fechaEliminacion;
     }
 
