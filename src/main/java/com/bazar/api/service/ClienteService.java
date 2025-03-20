@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -21,6 +22,9 @@ public class ClienteService implements IClienteService {
         ApiRespuesta<Cliente> respuesta;
 
         try{
+        cliente.setDisponible(true);
+        cliente.setVentas(new ArrayList<>());
+        cliente.setFechaEliminacion(null);
         clienteRepository.save(cliente);
         respuesta= new ApiRespuesta<>(true, "Cliente creado correctamente", cliente);
         }catch (Exception e){
