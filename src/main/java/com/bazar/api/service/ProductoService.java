@@ -22,6 +22,9 @@ public class ProductoService implements IProductoService{
     public ApiRespuesta<Producto> crearProducto(Producto producto) {
        ApiRespuesta<Producto> respuesta;
         try{
+            producto.setDisponible(true);
+            producto.setFechaEliminacion(null);
+            producto.setVenta(null);
             productoRepository.save(producto);
             respuesta= new ApiRespuesta<>(true, "Producto creado correctamente", producto);
         }catch(Exception e){
