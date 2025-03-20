@@ -122,7 +122,8 @@ public class ProductoService implements IProductoService{
     }
 
     @Override
-    public ApiRespuesta<List<Producto>> obtenerProductosDeterminadaCantEnStock(int cantidadStockAverificar) {
+    public ApiRespuesta<List<Producto>> obtenerProductosConFaltaStock() {
+        int cantidadStockAverificar=5;
         ApiRespuesta<List<Producto>> respuesta;
         List<Producto> productos = new ArrayList<>();
         List<Producto> todosProductos = this.obtenerTodosProductos().getDatos();
