@@ -13,8 +13,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class VentaService implements IVentaService {
@@ -30,7 +32,7 @@ public class VentaService implements IVentaService {
 
         try{
             verificarYdescontarStock(venta.getLista_productos());
-            venta.setTotal_venta(this.calcularTotalVenta(venta.getLista_productos()));
+            venta.setTotal_venta(calcularTotalVenta(venta.getLista_productos()));
             ventaRepository.save(venta);
             respuesta= new ApiRespuesta<>(true, "Venta creada exitosamente", venta);
         }catch (StockInsuficienteException e){
@@ -65,7 +67,7 @@ public class VentaService implements IVentaService {
 
             try{
                 verificarYdescontarStock(ventaExistente.getLista_productos());
-                ventaExistente.setTotal_venta(this.calcularTotalVenta(ventaExistente.getLista_productos()));
+                ventaExistente.setTotal_venta(calcularTotalVenta(ventaExistente.getLista_productos()));
                 ventaExistente.setCodigo_venta(venta.getCodigo_venta());
                 ventaExistente.setFecha_realizacion_venta(venta.getFecha_realizacion_venta());
                 ventaExistente.setEstado_venta(venta.getEstado_venta());
@@ -88,10 +90,10 @@ public class VentaService implements IVentaService {
 
         if(ventaOptional.isPresent()){
             ventaOptional.get().setEstado_venta(nuevoEstado);
-            respuesta= new ApiRespuesta<>(true, "Estado de venta modificado correctamente");
+            respuesta= new ApiRespuesta<>(true, "Estado de venta modificado correctamente", ventaOptional.get());
         }
         else{
-            respuesta= new ApiRespuesta<>(true, "Error, no se encontro la venta");
+            respuesta= new ApiRespuesta<>(false, "Error, no se encontro la venta", null);
         }
         return respuesta;
     }
@@ -130,17 +132,43 @@ public class VentaService implements IVentaService {
         return respuesta;
     }
 
+
+    //Obtener recaudacion total y cant de ventas en determinado dia
     @Override
-    public ResumenVentasDTO obtenerResumenVentasPorFecha(LocalDate fecha) {
-        return null;
+    public ApiRespuesta<ResumenVentasDTO> obtenerResumenVentasPorFecha(LocalDate fecha) {
+        ApiRespuesta<ResumenVentasDTO> respuesta;
+        List<Venta> ventasPorFecha= ventaRepository.findAll().stream()
+                .filter(venta-> venta.getFecha_realizacion_venta().equals(fecha))
+                .toList();
+
+        if(!ventasPorFecha.isEmpty()){
+          double recaudacion=this.calcularRecaudacionDeVentas(ventasPorFecha);
+            ResumenVentasDTO resumenVenta= new ResumenVentasDTO(ventasPorFecha.size(), recaudacion, fecha);
+          respuesta= new ApiRespuesta<>(true, "Resumen de venta obtenido correctamente", resumenVenta);
+        }else{
+        respuesta= new ApiRespuesta<>(false, "No existen ventas realizadas en la fecha ingresada", null);
+        }
+
+    return respuesta;
     }
 
+    //obtener el detalle de venta (codigo_venta,total,cantidad de productos,nombre y apellido de cliente) de la venta con el monto más alto de todas.
     @Override
-    public DetalleVentaDTO obtenerDetalleDeVentaDeMayorMonto() {
-        DetalleVentaDTO detalleVentaDTO= new DetalleVentaDTO();
-        //TERMINAR
-        return detalleVentaDTO;
+    public ApiRespuesta<DetalleVentaDTO> obtenerDetalleDeVentaDeMayorMonto() {
+        ApiRespuesta<DetalleVentaDTO> respuesta;
+        Optional<Venta> ventaMax = ventaRepository.findAll().stream()
+                .max(Comparator.comparingDouble(Venta::getTotal_venta));
+
+        if(ventaMax.isPresent()){
+            Venta venta= ventaMax.get();
+            DetalleVentaDTO detalleVenta= new DetalleVentaDTO(venta.getCodigo_venta(), venta.getTotal_venta(), venta.getLista_productos().size(), venta.getCliente().getNombre(), venta.getCliente().getApellido());
+            respuesta= new ApiRespuesta<>(true, "Detalle de venta de mayor monto obtenido correctamente", detalleVenta);
+        }else{
+            respuesta= new ApiRespuesta<>(false, "No se encontraron ventas");
+        }
+        return respuesta;
     }
+
 
     public void verificarYdescontarStock (List<Producto> listaProductos) throws StockInsuficienteException{
         for (Producto producto : listaProductos) {
@@ -162,4 +190,15 @@ public class VentaService implements IVentaService {
 
         return totalVenta;
     }
+
+    public double calcularRecaudacionDeVentas(List<Venta> ventas){
+        double recaudacion=0;
+        for(Venta venta:ventas){
+            recaudacion+= venta.getTotal_venta();
+        }
+
+        return recaudacion;
+    }
+
 }
+

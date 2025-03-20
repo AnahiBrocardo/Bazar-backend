@@ -17,7 +17,7 @@ public interface IVentaService {
    public ApiRespuesta<Venta> cambiarEstadoVenta(Long id_venta, Estado estado);
    public ApiRespuesta<List<Venta>> obtenerTodasVentas();
    public ApiRespuesta<List<Producto>> obtenerProductosDeVenta (Long id_venta);
-   public ResumenVentasDTO obtenerResumenVentasPorFecha(LocalDate fecha);
-   public DetalleVentaDTO obtenerDetalleDeVentaDeMayorMonto();
+   public ApiRespuesta<ResumenVentasDTO> obtenerResumenVentasPorFecha(LocalDate fecha);
+   public ApiRespuesta<DetalleVentaDTO> obtenerDetalleDeVentaDeMayorMonto();
 
 }
