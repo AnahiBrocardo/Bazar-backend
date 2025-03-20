@@ -18,6 +18,6 @@ public interface IProductoService {
 
     public ApiRespuesta<Producto> eliminarProducto(Long id);
 
-    public ApiRespuesta<List<Producto>> obtenerProductosDeterminadaCantEnStock(int cantidadStockAverificar);
+    public ApiRespuesta<List<Producto>> obtenerProductosConFaltaStock();
 
 }
