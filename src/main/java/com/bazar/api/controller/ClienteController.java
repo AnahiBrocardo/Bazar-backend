@@ -60,7 +60,7 @@ public class ClienteController {
     public ResponseEntity<ApiRespuesta<Cliente>> actualizarCliente(@PathVariable Long id_cliente, @RequestBody Cliente cliente){
         ApiRespuesta<Cliente>respuesta= clienteService.editarCliente(id_cliente, cliente);
         HttpStatus status = respuesta.isExito() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
-        
+
         return ResponseEntity.status(status).body(respuesta);
     }
 }
