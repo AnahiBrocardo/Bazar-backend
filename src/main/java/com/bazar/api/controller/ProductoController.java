@@ -60,7 +60,7 @@ public class ProductoController {
         return new ResponseEntity<>(respuesta, status);
     }
 
-    @PutMapping("/productos/editar/{id_producto")
+    @PutMapping("/productos/editar/{id_producto}")
     public ResponseEntity<ApiRespuesta<Producto>> editarProducto(@PathVariable Long id_producto, @RequestBody Producto producto) {
         ApiRespuesta<Producto>respuesta = productoService.editarProducto(id_producto, producto);
 
@@ -69,7 +69,7 @@ public class ProductoController {
         return new ResponseEntity<>(respuesta, status);
     }
 
-    @GetMapping("productos/obtener/falta_stock}")
+    @GetMapping("productos/falta_stock")
     public ResponseEntity<ApiRespuesta<List<Producto>>> obtenerProductosFaltaStock() {
         ApiRespuesta<List<Producto>> respuesta= productoService.obtenerProductosConFaltaStock();
         HttpStatus status = respuesta.isExito() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
