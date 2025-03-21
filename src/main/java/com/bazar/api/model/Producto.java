@@ -11,7 +11,7 @@ public class Producto {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "producto_seq")
     @SequenceGenerator(name = "producto_seq", sequenceName = "nombre_secuencia", allocationSize = 1)
-    private Long id_venta;
+    private Long id_producto;
     private Long codigoProducto;
     private String nombreProducto;
     private String marca;
@@ -29,8 +29,8 @@ public class Producto {
     public Producto() {
     }
 
-    public Producto(Long id_venta, Long codigoProducto, String nombreProducto, String marca, Double costo, int cantidad_disponible, boolean disponible, LocalDate fechaEliminacion, String descripcion, String url_imagen, Venta venta) {
-        this.id_venta = id_venta;
+    public Producto(Long id_producto, Long codigoProducto, String nombreProducto, String marca, Double costo, int cantidad_disponible, boolean disponible, LocalDate fechaEliminacion, String descripcion, String url_imagen, Venta venta) {
+        this.id_producto = id_producto;
         this.codigoProducto = codigoProducto;
         this.nombreProducto = nombreProducto;
         this.marca = marca;
@@ -43,8 +43,8 @@ public class Producto {
         this.venta = venta;
     }
 
-    public Long getId_venta() {
-        return id_venta;
+    public Long getId_producto() {
+        return id_producto;
     }
 
     public Long getCodigoProducto() {
@@ -88,8 +88,8 @@ public class Producto {
     }
 
 
-    public void setId_venta(Long id_venta) {
-        this.id_venta = id_venta;
+    public void setId_producto(Long id_producto) {
+        this.id_producto = id_producto;
     }
 
     public void setCodigoProducto(Long codigoProducto) {
