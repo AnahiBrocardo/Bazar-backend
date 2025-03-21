@@ -36,51 +36,54 @@ public class VentaService implements IVentaService {
         ApiRespuesta<Venta> respuesta = new ApiRespuesta<>();
 
         // Buscar cliente
-        Cliente cliente = clienteRepository.findById(venta.getCliente().getId_cliente())
-                .orElse(null);
+        Cliente cliente = clienteRepository.findById(venta.getCliente().getId_cliente()).orElse(null);
 
-        // Verificar si el cliente existe
         if (cliente == null) {
             respuesta.setExito(false);
             respuesta.setMensaje("Cliente no encontrado");
-        } else {
-            // Verificar si el cliente está disponible
-            if (!cliente.isDisponible()) {
+            return respuesta;
+        }
+
+        if (!cliente.isDisponible()) {
+            respuesta.setExito(false);
+            respuesta.setMensaje("El cliente no está disponible para realizar compras.");
+            return respuesta;
+        }
+
+        // Verificar disponibilidad de productos
+        boolean productosDisponibles = true;
+        for (Producto producto : venta.getLista_productos()) {
+            if (!producto.isDisponible()) {
                 respuesta.setExito(false);
-                respuesta.setMensaje("El cliente no está disponible para realizar compras.");
-            } else {
-                // Verificar la disponibilidad de productos
-                for (Producto producto : venta.getLista_productos()) {
-                    if (!producto.isDisponible()) {
-                        respuesta.setExito(false);
-                        respuesta.setMensaje("Producto " + producto.getNombreProducto() + " no disponible");
-                        break;
-                    }
-                }
-
-
-                    try {
-                        // Verificar y descontar stock
-                        verificarYdescontarStock(venta.getLista_productos());
-                        venta.setTotal_venta(calcularTotalVenta(venta.getLista_productos()));
-                        venta.setFecha_realizacion_venta(LocalDate.now());
-                        venta.setCliente(cliente);
-                        ventaRepository.save(venta);
-
-                        // Respuesta exitosa
-                        respuesta.setExito(true);
-                        respuesta.setMensaje("Venta creada exitosamente");
-                        respuesta.setDatos(venta);
-                    } catch (Exception e) {
-                        respuesta.setExito(false);
-                        respuesta.setMensaje("Error al crear la venta: " + e.getMessage());
-                    }
-                }
+                respuesta.setMensaje("Producto " + producto.getNombreProducto() + " no disponible");
+                productosDisponibles = false;
+                break;
             }
-        
+        }
+
+        if (!productosDisponibles) {
+            return respuesta;
+        }
+
+        try {
+            // Verificar y descontar stock
+            verificarYdescontarStock(venta.getLista_productos());
+            venta.setTotal_venta(calcularTotalVenta(venta.getLista_productos()));
+            venta.setFecha_realizacion_venta(LocalDate.now());
+            venta.setCliente(cliente);
+            ventaRepository.save(venta);
+
+            respuesta.setExito(true);
+            respuesta.setMensaje("Venta creada exitosamente");
+            respuesta.setDatos(venta);
+        } catch (Exception e) {
+            respuesta.setExito(false);
+            respuesta.setMensaje("Error al crear la venta: " + e.getMessage());
+        }
 
         return respuesta;
     }
+
 
 
     @Override
@@ -211,16 +214,26 @@ public class VentaService implements IVentaService {
     }
 
 
-    public void verificarYdescontarStock (List<Producto> listaProductos) throws StockInsuficienteException{
+    public void verificarYdescontarStock(List<Producto> listaProductos) throws StockInsuficienteException {
         for (Producto producto : listaProductos) {
-            if(producto.getCantidad_disponible()>0){
-                producto.setCantidad_disponible(producto.getCantidad_disponible()-1);
-                productoRespository.save(producto);
-            }else{
-                throw new StockInsuficienteException("No hay suficiente stock para el producto: " + producto.getNombreProducto());
+            // Buscar el producto en la base de datos usando su ID
+            Producto productoDB = productoRespository.findById(producto.getId_producto()).orElse(null);
+
+            // Verificar si el producto existe
+            if (productoDB == null) {
+                throw new StockInsuficienteException("El producto con ID " + producto.getId_producto() + " no existe.");
+            }
+
+            // Verificar disponibilidad de stock
+            if (productoDB.getCantidad_disponible() > 0) {
+                productoDB.setCantidad_disponible(productoDB.getCantidad_disponible() - 1);
+                productoRespository.save(productoDB);
+            } else {
+                throw new StockInsuficienteException("No hay suficiente stock para el producto: " + productoDB.getNombreProducto());
             }
         }
     }
+
 
     public Double calcularTotalVenta (List<Producto> listaProductos){
         Double totalVenta=0.0;
