@@ -116,7 +116,7 @@ public class ProductoService implements IProductoService{
             productoRepository.save(productoAeliminar);
             respuesta= new ApiRespuesta<>(true, "Producto eliminado correctamente", productoAeliminar);
         }else{
-            respuesta= new ApiRespuesta<>(false,"Error al eliminar el producto", null);
+            respuesta= new ApiRespuesta<>(false,"El producto que desea eliminar no existe ", null);
         }
         return respuesta;
     }
@@ -134,7 +134,7 @@ public class ProductoService implements IProductoService{
         }
 
         if (productos.isEmpty()) {
-            respuesta= new ApiRespuesta<>(false, "No se encontraron productos con esa cantidad en stock", null);
+            respuesta= new ApiRespuesta<>(false, "No se encontraron productos con menos de "+cantidadStockAverificar+ " unidades en stock", null);
         }else{
             respuesta=new ApiRespuesta<>(true, "Productos con menos stock obtenidos correctamente", productos);
         }
