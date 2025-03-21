@@ -4,9 +4,11 @@ import com.bazar.api.dto.ApiRespuesta;
 import com.bazar.api.dto.DetalleVentaDTO;
 import com.bazar.api.dto.ResumenVentasDTO;
 import com.bazar.api.exceptions.StockInsuficienteException;
+import com.bazar.api.model.Cliente;
 import com.bazar.api.model.Estado;
 import com.bazar.api.model.Producto;
 import com.bazar.api.model.Venta;
+import com.bazar.api.repository.IClienteRepository;
 import com.bazar.api.repository.IProductoRepository;
 import com.bazar.api.repository.IVentaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,21 +28,60 @@ public class VentaService implements IVentaService {
     @Autowired
     IProductoRepository productoRespository;
 
+    @Autowired
+    IClienteRepository clienteRepository;
+
     @Override
     public ApiRespuesta<Venta> crearVenta(Venta venta) {
         ApiRespuesta<Venta> respuesta = new ApiRespuesta<>();
 
-        try{
-            verificarYdescontarStock(venta.getLista_productos());
-            venta.setTotal_venta(calcularTotalVenta(venta.getLista_productos()));
-            ventaRepository.save(venta);
-            respuesta= new ApiRespuesta<>(true, "Venta creada exitosamente", venta);
-        }catch (StockInsuficienteException e){
-            System.out.println("Error: " + e.getMessage());
-            respuesta= new ApiRespuesta<>(false, "Stock insuficiente", venta);
-        }
-    return respuesta;
+        // Buscar cliente
+        Cliente cliente = clienteRepository.findById(venta.getCliente().getId_cliente())
+                .orElse(null);
+
+        // Verificar si el cliente existe
+        if (cliente == null) {
+            respuesta.setExito(false);
+            respuesta.setMensaje("Cliente no encontrado");
+        } else {
+            // Verificar si el cliente está disponible
+            if (!cliente.isDisponible()) {
+                respuesta.setExito(false);
+                respuesta.setMensaje("El cliente no está disponible para realizar compras.");
+            } else {
+                // Verificar la disponibilidad de productos
+                for (Producto producto : venta.getLista_productos()) {
+                    if (!producto.isDisponible()) {
+                        respuesta.setExito(false);
+                        respuesta.setMensaje("Producto " + producto.getNombreProducto() + " no disponible");
+                        break;
+                    }
+                }
+
+
+                    try {
+                        // Verificar y descontar stock
+                        verificarYdescontarStock(venta.getLista_productos());
+                        venta.setTotal_venta(calcularTotalVenta(venta.getLista_productos()));
+                        venta.setFecha_realizacion_venta(LocalDate.now());
+                        venta.setCliente(cliente);
+                        ventaRepository.save(venta);
+
+                        // Respuesta exitosa
+                        respuesta.setExito(true);
+                        respuesta.setMensaje("Venta creada exitosamente");
+                        respuesta.setDatos(venta);
+                    } catch (Exception e) {
+                        respuesta.setExito(false);
+                        respuesta.setMensaje("Error al crear la venta: " + e.getMessage());
+                    }
+                }
+            }
+        
+
+        return respuesta;
     }
+
 
     @Override
     public ApiRespuesta<Venta> obtenerVenta(Long id_venta) {
@@ -189,6 +230,10 @@ public class VentaService implements IVentaService {
         }
 
         return totalVenta;
+    }
+    private boolean productoDisponible(Producto producto) {
+        // Verifica si el producto tiene stock disponible
+        return producto.getCantidad_disponible() > 0;
     }
 
     public double calcularRecaudacionDeVentas(List<Venta> ventas){
