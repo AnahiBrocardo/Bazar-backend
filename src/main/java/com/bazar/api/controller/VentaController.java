@@ -89,7 +89,7 @@ public class VentaController {
         ApiRespuesta<DetalleVentaDTO> respuesta= ventaService.obtenerDetalleDeVentaDeMayorMonto();
 
         HttpStatus status = respuesta.isExito() ? HttpStatus.OK : HttpStatus.NOT_FOUND;
-        
+
         return new ResponseEntity<>(respuesta, status);
     }
 
