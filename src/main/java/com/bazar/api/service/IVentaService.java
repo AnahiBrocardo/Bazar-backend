@@ -19,5 +19,5 @@ public interface IVentaService {
    public ApiRespuesta<List<Producto>> obtenerProductosDeVenta (Long id_venta);
    public ApiRespuesta<ResumenVentasDTO> obtenerResumenVentasPorFecha(LocalDate fecha);
    public ApiRespuesta<DetalleVentaDTO> obtenerDetalleDeVentaDeMayorMonto();
-
+   public ApiRespuesta<Venta> eliminarVenta(Long id_venta);
 }

@@ -93,6 +93,14 @@ public class VentaController {
         return new ResponseEntity<>(respuesta, status);
     }
 
+    @DeleteMapping ("/ventas/eliminar/{id_venta}")
+    public ResponseEntity<ApiRespuesta<Venta>> eliminarVenta(@PathVariable Long id_venta) {
+        ApiRespuesta<Venta> respuesta= ventaService.eliminarVenta(id_venta);
+
+        HttpStatus status = respuesta.isExito() ? HttpStatus.OK : HttpStatus.NOT_FOUND;
+
+        return new ResponseEntity<>(respuesta, status);
+    }
 
 
 }
