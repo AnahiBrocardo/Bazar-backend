@@ -20,5 +20,4 @@ public interface IProductoService {
 
     public ApiRespuesta<List<Producto>> obtenerProductosConFaltaStock();
 
-    public ApiRespuesta<Producto> editarStock(Long idProducto, int nuevaCantidadDisponible);
 }
