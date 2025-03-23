@@ -11,6 +11,7 @@ import com.bazar.api.model.Venta;
 import com.bazar.api.repository.IClienteRepository;
 import com.bazar.api.repository.IProductoRepository;
 import com.bazar.api.repository.IVentaRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -47,8 +48,7 @@ public class VentaService implements IVentaService {
                 respuesta= new ApiRespuesta<>(false, "El producto " + productoNoDisponible +" no esta disponible");
             }else{
                 try {
-                    procesarDescuento(venta.getLista_productos());
-                    procesarVenta(venta, cliente);
+                    procesarVentaCompleta(venta, cliente);
                     respuesta= new ApiRespuesta<>(true, "Venta creada exitosamente", venta);
                 } catch( StockInsuficienteException e){
                     System.out.println(e.getMessage());
@@ -70,54 +70,8 @@ public class VentaService implements IVentaService {
         return clienteRepository.findById(idCliente).orElse(null);
     }
 
-    public Map<Long, Integer> contarProductos(List<Producto> listaProductos) {
-        Map<Long, Integer> conteoProductos = new HashMap<>();
-
-        for (Producto producto : listaProductos) {
-            Long idProducto = producto.getId_producto();
-            conteoProductos.put(idProducto, conteoProductos.getOrDefault(idProducto, 0) + 1);
-        }
-        return conteoProductos;
-    }
-
-    public void validarStock(Map<Long, Integer> conteoProductos) throws StockInsuficienteException {
-        for (Map.Entry<Long, Integer> entry : conteoProductos.entrySet()) {
-            Long idProducto = entry.getKey();
-            int cantidadRequerida = entry.getValue();
-
-            Producto productoDB = productoRepository.findById(idProducto)
-                    .orElseThrow(() -> new StockInsuficienteException("El producto con ID " + idProducto + " no existe."));
-
-            if (productoDB.getCantidad_disponible() < cantidadRequerida) {
-                throw new StockInsuficienteException("No hay suficiente stock para el producto: " + productoDB.getNombreProducto());
-            }
-        }
-    }
-
-    public void descontarYGuardarStock(Map<Long, Integer> conteoProductos) {
-        for (Map.Entry<Long, Integer> entry : conteoProductos.entrySet()) {
-            Long idProducto = entry.getKey();
-            int cantidadADescontar = entry.getValue();
-
-            Producto productoDB = productoRepository.findById(idProducto).orElse(null);
-
-            if (productoDB != null) {
 
 
-                productoDB.setCantidad_disponible(productoDB.getCantidad_disponible() - cantidadADescontar);
-
-                productoService.editarProducto(productoDB.getId_producto(), productoDB);
-            }
-        }
-    }
-
-    public void procesarDescuento(List<Producto> listaProductos) throws StockInsuficienteException {
-        Map<Long, Integer> conteoProductos = contarProductos(listaProductos);
-
-        validarStock(conteoProductos);
-
-        descontarYGuardarStock(conteoProductos);
-    }
 
     private Producto productoNoDisponible(List<Producto> productos) {
         Producto productoNoDisponible = null;
@@ -137,20 +91,47 @@ public class VentaService implements IVentaService {
         return productoNoDisponible;
     }
 
-    private void procesarVenta(Venta venta, Cliente cliente) {
-        venta.setLista_productos(venta.getLista_productos());
+    @Transactional
+    public Venta validarYDescontar(List<Producto> listaProductos, Venta venta) throws StockInsuficienteException {
+        List<Producto> nuevaLista = new ArrayList<>();
+        for (Producto producto : listaProductos) {
+            Producto productoDB = productoRepository.findById(producto.getId_producto()).orElse(null);
+            if (productoDB != null) {
+                if (productoDB.getCantidad_disponible() <= 0) {
+
+                    throw new StockInsuficienteException("El producto " + productoDB.getNombreProducto() + " tiene stock insuficiente: "+ productoDB.getCantidad_disponible());
+                }else{
+                    int nuevoStock = productoDB.getCantidad_disponible() - 1;
+                    productoDB.setCantidad_disponible(nuevoStock);
+                    productoRepository.save(productoDB);
+
+                    nuevaLista.add(productoDB);
+                }
+            }
+        }
+        venta.setLista_productos(nuevaLista);
+        return venta;
+    }
+
+    private void procesarVentaCompleta(Venta venta, Cliente cliente) throws StockInsuficienteException {
+
+        venta= validarYDescontar(venta.getLista_productos(), venta);
         venta.setTotal_venta(calcularTotalVenta(venta.getLista_productos()));
         venta.setFecha_realizacion_venta(LocalDate.now());
         venta.setCliente(cliente);
+        venta.setLista_productos(venta.getLista_productos());
 
-        venta = ventaRepository.save(venta);
+        Venta ventaGuardada = ventaRepository.save(venta);
 
         for (Producto producto : venta.getLista_productos()) {
-            producto.setVenta(venta);
-            productoRepository.save(producto);
-        }
 
+            producto.setVenta(ventaGuardada);
+
+            productoService.editarProducto(producto.getId_producto(), producto);
+
+        }
     }
+
 
 
 
@@ -191,28 +172,8 @@ public class VentaService implements IVentaService {
 
     @Override
     public ApiRespuesta<Venta> actualizarVenta(Long id_venta, Venta venta) { //VER!
-        ApiRespuesta<Venta> respuesta;
-        Optional<Venta> ventaExistenteOpt = ventaRepository.findById(id_venta); // puede almacenar un producto o estar vacío si el producto no existe
+        ApiRespuesta<Venta> respuesta= new ApiRespuesta<>();
 
-        if (ventaExistenteOpt.isEmpty()) {
-            respuesta= new ApiRespuesta<>(false, "No se encontro la venta", null);
-        }else{
-            Venta ventaExistente = ventaExistenteOpt.get();
-
-            try{
-                procesarDescuento(venta.getLista_productos());
-                ventaExistente.setTotal_venta(calcularTotalVenta(ventaExistente.getLista_productos()));
-                ventaExistente.setCodigo_venta(venta.getCodigo_venta());
-                ventaExistente.setFecha_realizacion_venta(venta.getFecha_realizacion_venta());
-                ventaExistente.setEstado_venta(venta.getEstado_venta());
-                ventaExistente.setCliente(venta.getCliente());
-                ventaRepository.save(venta);
-                respuesta= new ApiRespuesta<>(true, "Venta actualizada correctamente", venta);
-            }catch (StockInsuficienteException e){
-                System.out.println("Error: " + e.getMessage());
-                respuesta= new ApiRespuesta<>(false, "Stock insuficiente");
-            }
-        }
 
         return respuesta;
     }
