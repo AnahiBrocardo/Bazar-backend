@@ -48,8 +48,9 @@ public class VentaController {
     }
 
     @PutMapping("/ventas/editar/{id_venta}")
-    public ResponseEntity<ApiRespuesta<Venta>> editarVenta(@RequestBody Venta venta, @PathVariable Long id_venta) {
-        ApiRespuesta<Venta> respuesta= ventaService.actualizarVenta(id_venta, venta);
+    public ResponseEntity<ApiRespuesta<Venta>> editarVenta( @PathVariable Long id_venta,
+                                                            @RequestBody List<Producto> productos) {
+        ApiRespuesta<Venta> respuesta= ventaService.actualizarVenta(id_venta, productos);
 
         HttpStatus status = respuesta.isExito() ? HttpStatus.OK : HttpStatus.NOT_FOUND;
 

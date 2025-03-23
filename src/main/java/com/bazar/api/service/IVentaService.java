@@ -13,7 +13,7 @@ import java.util.List;
 public interface IVentaService {
    public ApiRespuesta<Venta> crearVenta(Venta venta);
    public ApiRespuesta<Venta> obtenerVenta(Long id_venta);
-   public ApiRespuesta<Venta> actualizarVenta(Long id_venta, Venta venta);
+   public ApiRespuesta<Venta> actualizarVenta(Long id_venta, List<Producto> productos);
    public ApiRespuesta<Venta> cambiarEstadoVenta(Long id_venta, Estado estado);
    public ApiRespuesta<List<Venta>> obtenerTodasVentas();
    public ApiRespuesta<List<Producto>> obtenerProductosDeVenta (Long id_venta);

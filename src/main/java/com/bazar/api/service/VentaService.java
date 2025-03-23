@@ -171,13 +171,29 @@ public class VentaService implements IVentaService {
     }
 
     @Override
-    public ApiRespuesta<Venta> actualizarVenta(Long id_venta, Venta venta) { //VER!
-        ApiRespuesta<Venta> respuesta= new ApiRespuesta<>();
+    public ApiRespuesta<Venta> actualizarVenta(Long id_venta, List<Producto> productos) { //VER!
+        ApiRespuesta<Venta> respuesta;
+        Venta ventaBDD= ventaRepository.findById(id_venta).orElse(null);
+        if(ventaBDD!=null){
+           if(ventaBDD.getEstado_venta() == Estado.CANCELADA || ventaBDD.getEstado_venta()== Estado.FINALIZADA){
+               respuesta= new ApiRespuesta<>(false, "No se puede editar una venta " + ventaBDD.getEstado_venta()); // no se puede editar una venta finalizada o cancelada
+           }else{
+               List<Producto> productosOriginales= ventaBDD.getLista_productos();
+               // hacer funcion que compare lista vieja y lista actual TERMINAR
+          respuesta= new ApiRespuesta<>(true, "Venta actualizada correctamente");
+           }
+        }else{
+            respuesta=new ApiRespuesta<>(false, "Venta no encontrada");
+        }
+
 
 
         return respuesta;
     }
 
+    public void manejarEdicionProductosVenta(List<Producto> productosOriginales, List<Producto>productosNuevos){
+
+    }
     @Override
     public ApiRespuesta<Venta> cambiarEstadoVenta(Long id_venta, Estado nuevoEstado) {
         Optional<Venta> ventaOptional= ventaRepository.findById(id_venta);
