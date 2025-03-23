@@ -11,15 +11,11 @@ import com.bazar.api.model.Venta;
 import com.bazar.api.repository.IClienteRepository;
 import com.bazar.api.repository.IProductoRepository;
 import com.bazar.api.repository.IVentaRepository;
-import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,32 +27,40 @@ public class VentaService implements IVentaService {
     IProductoRepository productoRepository;
 
     @Autowired
+    IProductoService productoService;
+
+    @Autowired
     IClienteRepository clienteRepository;
 
     @Override
     public ApiRespuesta<Venta> crearVenta(Venta venta) {
-        ApiRespuesta<Venta> respuesta = new ApiRespuesta<>();
+        ApiRespuesta<Venta> respuesta;
 
         Cliente cliente = obtenerCliente(venta.getCliente().getId_cliente());
-        if (cliente == null || !cliente.isDisponible()) {
-            return respuestaError(respuesta, "Cliente no encontrado o no disponible.");
+        if (cliente == null) {
+            respuesta= new ApiRespuesta<>(false, "Cliente no encontrado");
+        }else if (!cliente.isDisponible()){
+            respuesta= new ApiRespuesta<>(false, "Cliente no disponible");
+        }else{
+            Producto productoNoDisponible = productoNoDisponible(venta.getLista_productos());
+            if (productoNoDisponible !=null){
+                respuesta= new ApiRespuesta<>(false, "El producto " + productoNoDisponible +" no esta disponible");
+            }else{
+                try {
+                    procesarDescuento(venta.getLista_productos());
+                    procesarVenta(venta, cliente);
+                    respuesta= new ApiRespuesta<>(true, "Venta creada exitosamente", venta);
+                } catch( StockInsuficienteException e){
+                    System.out.println(e.getMessage());
+                    respuesta= new ApiRespuesta<>(false, "Error en el stock: " + e.getMessage());
+                }catch (Exception e){
+                    System.out.println(e.getMessage());
+                    respuesta= new ApiRespuesta<>(false, e.getMessage());
+                }
+            }
+
         }
 
-        if (!productosDisponibles(venta.getLista_productos())) {
-            return respuestaError(respuesta, "Uno o más productos no están disponibles.");
-        }
-
-        try {
-            verificarStock(venta.getLista_productos());
-            descontarYGuardarStock(venta.getLista_productos());
-
-            procesarVenta(venta, cliente);
-            respuesta.setExito(true);
-            respuesta.setMensaje("Venta creada exitosamente");
-            respuesta.setDatos(venta);
-        } catch (Exception e) {
-            return respuestaError(respuesta, "Error al crear la venta: " + e.getMessage());
-        }
 
         return respuesta;
     }
@@ -66,18 +70,72 @@ public class VentaService implements IVentaService {
         return clienteRepository.findById(idCliente).orElse(null);
     }
 
+    public Map<Long, Integer> contarProductos(List<Producto> listaProductos) {
+        Map<Long, Integer> conteoProductos = new HashMap<>();
 
-    private boolean productosDisponibles(List<Producto> productos) { //que retorne la respuesta !!!
-        for (Producto producto : productos) {
-            if (!producto.isDisponible()) {
-                return false;
-            }
+        for (Producto producto : listaProductos) {
+            Long idProducto = producto.getId_producto();
+            conteoProductos.put(idProducto, conteoProductos.getOrDefault(idProducto, 0) + 1);
         }
-        return true;
+        return conteoProductos;
     }
 
+    public void validarStock(Map<Long, Integer> conteoProductos) throws StockInsuficienteException {
+        for (Map.Entry<Long, Integer> entry : conteoProductos.entrySet()) {
+            Long idProducto = entry.getKey();
+            int cantidadRequerida = entry.getValue();
+
+            Producto productoDB = productoRepository.findById(idProducto)
+                    .orElseThrow(() -> new StockInsuficienteException("El producto con ID " + idProducto + " no existe."));
+
+            if (productoDB.getCantidad_disponible() < cantidadRequerida) {
+                throw new StockInsuficienteException("No hay suficiente stock para el producto: " + productoDB.getNombreProducto());
+            }
+        }
+    }
+
+    public void descontarYGuardarStock(Map<Long, Integer> conteoProductos) {
+        for (Map.Entry<Long, Integer> entry : conteoProductos.entrySet()) {
+            Long idProducto = entry.getKey();
+            int cantidadADescontar = entry.getValue();
+
+            Producto productoDB = productoRepository.findById(idProducto).orElse(null);
+
+            if (productoDB != null) {
 
 
+                productoDB.setCantidad_disponible(productoDB.getCantidad_disponible() - cantidadADescontar);
+
+                productoService.editarProducto(productoDB.getId_producto(), productoDB);
+            }
+        }
+    }
+
+    public void procesarDescuento(List<Producto> listaProductos) throws StockInsuficienteException {
+        Map<Long, Integer> conteoProductos = contarProductos(listaProductos);
+
+        validarStock(conteoProductos);
+
+        descontarYGuardarStock(conteoProductos);
+    }
+
+    private Producto productoNoDisponible(List<Producto> productos) {
+        Producto productoNoDisponible = null;
+        int i = 0;
+        boolean encontrado = false;
+        while (i < productos.size() && !encontrado) {
+            Producto producto = productos.get(i);
+            Producto productoDB = productoRepository.findById(producto.getId_producto()).orElse(null);
+            if (productoDB != null) {
+                if(!productoDB.isDisponible()) {
+                    productoNoDisponible = productoDB;
+                    encontrado = true;
+                }
+            }
+            i++;
+        }
+        return productoNoDisponible;
+    }
 
     private void procesarVenta(Venta venta, Cliente cliente) {
         venta.setLista_productos(venta.getLista_productos());
@@ -95,10 +153,15 @@ public class VentaService implements IVentaService {
     }
 
 
-    private ApiRespuesta<Venta> respuestaError(ApiRespuesta<Venta> respuesta, String mensaje) {
-        respuesta.setExito(false);
-        respuesta.setMensaje(mensaje);
-        return respuesta;
+
+    public Double calcularTotalVenta (List<Producto> listaProductos){
+        Double totalVenta=0.0;
+
+        for(Producto producto:listaProductos){
+            totalVenta+= producto.getCosto();
+        }
+
+        return totalVenta;
     }
 
 
@@ -115,36 +178,6 @@ public class VentaService implements IVentaService {
         return respuesta;
     }
 
-    public void verificarStock(List<Producto> listaProductos) throws StockInsuficienteException {
-        for (Producto producto : listaProductos) {
-            Producto productoDB = productoRepository.findById(producto.getId_producto())
-                    .orElseThrow(() -> new StockInsuficienteException("El producto con ID " + producto.getId_producto() + " no existe."));
-
-            if (productoDB.getCantidad_disponible() <= 0) {
-                throw new StockInsuficienteException("No hay suficiente stock para el producto: " + productoDB.getNombreProducto());
-            }
-        }
-    }
-    public void descontarYGuardarStock(List<Producto> listaProductos) {
-        for (Producto producto : listaProductos) {
-            Producto productoDB = productoRepository.findById(producto.getId_producto()).orElse(null);
-            if(productoDB!=null){
-                productoDB.setCantidad_disponible(productoDB.getCantidad_disponible() - 1);
-                productoRepository.save(productoDB);
-            }
-        }
-    }
-
-
-    public Double calcularTotalVenta (List<Producto> listaProductos){
-        Double totalVenta=0.0;
-
-        for(Producto producto:listaProductos){
-            totalVenta+= producto.getCosto();
-        }
-
-        return totalVenta;
-    }
 
 
     public double calcularRecaudacionDeVentas(List<Venta> ventas){
@@ -157,7 +190,7 @@ public class VentaService implements IVentaService {
     }
 
     @Override
-    public ApiRespuesta<Venta> actualizarVenta(Long id_venta, Venta venta) {
+    public ApiRespuesta<Venta> actualizarVenta(Long id_venta, Venta venta) { //VER!
         ApiRespuesta<Venta> respuesta;
         Optional<Venta> ventaExistenteOpt = ventaRepository.findById(id_venta); // puede almacenar un producto o estar vacío si el producto no existe
 
@@ -167,11 +200,7 @@ public class VentaService implements IVentaService {
             Venta ventaExistente = ventaExistenteOpt.get();
 
             try{
-                // Verificar si hay stock suficiente
-                verificarStock(venta.getLista_productos());
-
-                // Descontar el stock y guardar los productos
-                descontarYGuardarStock(venta.getLista_productos());
+                procesarDescuento(venta.getLista_productos());
                 ventaExistente.setTotal_venta(calcularTotalVenta(ventaExistente.getLista_productos()));
                 ventaExistente.setCodigo_venta(venta.getCodigo_venta());
                 ventaExistente.setFecha_realizacion_venta(venta.getFecha_realizacion_venta());

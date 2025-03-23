@@ -14,6 +14,8 @@ public class ApiRespuesta<T> {
         this.datos = datos;
     }
 
+
+
     public ApiRespuesta(boolean exito, String mensaje) {
         this.exito = exito;
         this.mensaje = mensaje;

@@ -142,5 +142,25 @@ public class ProductoService implements IProductoService{
         return  respuesta;
     }
 
+    @Override
+    public ApiRespuesta<Producto> editarStock(Long idProducto, int nuevaCantidadDisponible) {
+        ApiRespuesta<Producto> respuesta;
+
+        Optional<Producto> productoExistenteOpt = productoRepository.findById(idProducto);
+
+        if (productoExistenteOpt.isEmpty()) {
+            respuesta = new ApiRespuesta<>(false, "El producto no existe", null);
+        } else {
+            Producto productoExistente = productoExistenteOpt.get();
+
+            productoExistente.setCantidad_disponible(nuevaCantidadDisponible);
+
+            productoRepository.save(productoExistente);
+            respuesta = new ApiRespuesta<>(true, "Stock actualizado correctamente", productoExistente);
+        }
+
+        return respuesta;
+    }
+
 
 }
