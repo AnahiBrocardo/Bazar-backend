@@ -113,6 +113,18 @@ public class VentaService implements IVentaService {
         return venta;
     }
 
+    public boolean verificarStockProducto (Long id_producto, int cantDescontar) {
+        boolean exito=false;
+        Producto productoBDD= productoRepository.findById(id_producto).orElse(null);
+        if(productoBDD!=null){
+            int nuevoStock= productoBDD.getCantidad_disponible()-cantDescontar;
+            if(nuevoStock>=0){
+                exito= true;
+            }
+        }
+        return exito;
+    }
+
     private void procesarVentaCompleta(Venta venta, Cliente cliente) throws StockInsuficienteException {
 
         venta= validarYDescontar(venta.getLista_productos(), venta);
@@ -179,21 +191,96 @@ public class VentaService implements IVentaService {
                respuesta= new ApiRespuesta<>(false, "No se puede editar una venta " + ventaBDD.getEstado_venta()); // no se puede editar una venta finalizada o cancelada
            }else{
                List<Producto> productosOriginales= ventaBDD.getLista_productos();
-               // hacer funcion que compare lista vieja y lista actual TERMINAR
-          respuesta= new ApiRespuesta<>(true, "Venta actualizada correctamente");
+
+               // Se convierte las listas de productos en mapas (id_producto -> cantidad)
+               Map<Long, Integer> productosOriginalesMap = convertirListaAMapa(ventaBDD.getLista_productos());
+               Map<Long, Integer> productosNuevosMap = convertirListaAMapa(productos);
+
+               try{
+                   actualizarStock(productosOriginalesMap, productosNuevosMap);
+                   double nuevoTotal= calcularTotalVenta(productos);
+                   ventaBDD.setTotal_venta(nuevoTotal);
+                   ventaBDD.setLista_productos(productos);
+                   ventaRepository.save(ventaBDD);
+
+                   respuesta= new ApiRespuesta<>(true, "Venta actualizada correctamente");
+               }catch(StockInsuficienteException e){
+                   respuesta= new ApiRespuesta<>(false, e.getMessage());
+               }
+
            }
         }else{
             respuesta=new ApiRespuesta<>(false, "Venta no encontrada");
         }
-
-
-
         return respuesta;
     }
 
-    public void manejarEdicionProductosVenta(List<Producto> productosOriginales, List<Producto>productosNuevos){
-
+    private Map<Long, Integer> convertirListaAMapa(List<Producto> productos) {
+        Map<Long, Integer> mapa = new HashMap<>();
+        for (Producto producto : productos) {
+            if (mapa.containsKey(producto.getId_producto())) {
+                int cantidadActual = mapa.get(producto.getId_producto());
+                mapa.put(producto.getId_producto(), cantidadActual + producto.getCantidad_disponible());
+            } else {
+                mapa.put(producto.getId_producto(), producto.getCantidad_disponible());
+            }
+        }
+        return mapa;
     }
+
+    public void eliminarVentaDeProducto(Long idProducto) {
+        Producto producto = productoRepository.findById(idProducto).orElse(null);
+        if (producto != null) {
+            producto.setVenta(null); // Desvincula el producto de la venta
+            productoRepository.save(producto); // Guarda el cambio en la BD
+        }
+    }
+
+    private void actualizarStock(Map<Long, Integer> productosOriginales, Map<Long, Integer> productosNuevos) throws StockInsuficienteException {
+        // Verificar si hay productos eliminados
+        for (Long idProducto : productosOriginales.keySet()) {
+            if (!productosNuevos.containsKey(idProducto)) {
+                int cantidadEliminada = productosOriginales.get(idProducto);
+                restaurarStock(idProducto, cantidadEliminada);
+                eliminarVentaDeProducto(idProducto);
+            }
+        }
+
+        // Verificar productos agregados o modificados
+        for (Map.Entry<Long, Integer> entry : productosNuevos.entrySet()) {
+            Long idProducto = entry.getKey();
+            int nuevaCantidad = entry.getValue();
+            int cantidadAntigua = productosOriginales.getOrDefault(idProducto, 0);
+            int diferencia = nuevaCantidad - cantidadAntigua;
+
+            if (diferencia > 0) { // Se aumentó la cantidad de un producto
+                if (verificarStockProducto(idProducto, diferencia)) { // Verificar stock antes de descontar
+                    descontarStock(idProducto, diferencia);
+                } else {
+                    throw new StockInsuficienteException("Stock insuficiente para el producto con ID: " + idProducto);
+                }
+            } else if (diferencia < 0) { // Se redujo la cantidad de un producto
+                restaurarStock(idProducto, Math.abs(diferencia));
+            }
+        }
+    }
+
+    private void descontarStock(Long idProducto, int cantidad) {
+        Producto producto = productoRepository.findById(idProducto).orElse(null);
+        if (producto != null) {
+            producto.setCantidad_disponible(producto.getCantidad_disponible() - cantidad);
+            productoRepository.save(producto);
+        }
+    }
+
+    private void restaurarStock(Long idProducto, int cantidad) {
+        Producto producto = productoRepository.findById(idProducto).orElse(null);
+        if (producto != null) {
+            producto.setCantidad_disponible(producto.getCantidad_disponible() + cantidad);
+            productoRepository.save(producto);
+        }
+    }
+
     @Override
     public ApiRespuesta<Venta> cambiarEstadoVenta(Long id_venta, Estado nuevoEstado) {
         Optional<Venta> ventaOptional= ventaRepository.findById(id_venta);
