@@ -203,7 +203,7 @@ public class VentaService implements IVentaService {
                    ventaBDD.setLista_productos(productos);
                    ventaRepository.save(ventaBDD);
 
-                   respuesta= new ApiRespuesta<>(true, "Venta actualizada correctamente");
+                   respuesta= new ApiRespuesta<>(true, "Venta actualizada correctamente", ventaBDD);
                }catch(StockInsuficienteException e){
                    respuesta= new ApiRespuesta<>(false, e.getMessage());
                }
@@ -219,10 +219,9 @@ public class VentaService implements IVentaService {
         Map<Long, Integer> mapa = new HashMap<>();
         for (Producto producto : productos) {
             if (mapa.containsKey(producto.getId_producto())) {
-                int cantidadActual = mapa.get(producto.getId_producto());
-                mapa.put(producto.getId_producto(), cantidadActual + producto.getCantidad_disponible());
+                mapa.put(producto.getId_producto(), mapa.get(producto.getId_producto()) + 1);
             } else {
-                mapa.put(producto.getId_producto(), producto.getCantidad_disponible());
+                mapa.put(producto.getId_producto(), 1);
             }
         }
         return mapa;
@@ -231,8 +230,8 @@ public class VentaService implements IVentaService {
     public void eliminarVentaDeProducto(Long idProducto) {
         Producto producto = productoRepository.findById(idProducto).orElse(null);
         if (producto != null) {
-            producto.setVenta(null); // Desvincula el producto de la venta
-            productoRepository.save(producto); // Guarda el cambio en la BD
+            producto.setVenta(null);
+            productoRepository.save(producto);
         }
     }
 
@@ -241,8 +240,10 @@ public class VentaService implements IVentaService {
         for (Long idProducto : productosOriginales.keySet()) {
             if (!productosNuevos.containsKey(idProducto)) {
                 int cantidadEliminada = productosOriginales.get(idProducto);
-                restaurarStock(idProducto, cantidadEliminada);
-                eliminarVentaDeProducto(idProducto);
+                if(cantidadEliminada>0){
+                    restaurarStock(idProducto, cantidadEliminada);
+                    eliminarVentaDeProducto(idProducto);
+                }
             }
         }
 
@@ -253,31 +254,36 @@ public class VentaService implements IVentaService {
             int cantidadAntigua = productosOriginales.getOrDefault(idProducto, 0);
             int diferencia = nuevaCantidad - cantidadAntigua;
 
-            if (diferencia > 0) { // Se aumentó la cantidad de un producto
+            if (nuevaCantidad>cantidadAntigua) { // Si aumentó la cantidad de un producto
                 if (verificarStockProducto(idProducto, diferencia)) { // Verificar stock antes de descontar
                     descontarStock(idProducto, diferencia);
                 } else {
                     throw new StockInsuficienteException("Stock insuficiente para el producto con ID: " + idProducto);
                 }
-            } else if (diferencia < 0) { // Se redujo la cantidad de un producto
-                restaurarStock(idProducto, Math.abs(diferencia));
+            } else if(cantidadAntigua>nuevaCantidad){
+                int cantidadRestaurada = cantidadAntigua - nuevaCantidad;
+                if (cantidadRestaurada > 0) { // Restaurar solo si la cantidad restaurada es positiva
+                    restaurarStock(idProducto, cantidadRestaurada); // Restaurar el stock
+                }
             }
         }
     }
 
-    private void descontarStock(Long idProducto, int cantidad) {
+    private void descontarStock(Long idProducto, int cantADescontar) {
         Producto producto = productoRepository.findById(idProducto).orElse(null);
         if (producto != null) {
-            producto.setCantidad_disponible(producto.getCantidad_disponible() - cantidad);
+            producto.setCantidad_disponible(producto.getCantidad_disponible() - cantADescontar);
             productoRepository.save(producto);
         }
     }
 
-    private void restaurarStock(Long idProducto, int cantidad) {
-        Producto producto = productoRepository.findById(idProducto).orElse(null);
-        if (producto != null) {
-            producto.setCantidad_disponible(producto.getCantidad_disponible() + cantidad);
-            productoRepository.save(producto);
+    private void restaurarStock(Long idProducto, int diferencia) {
+        if (diferencia > 0) { // Solo restaurar si la diferencia es positiva
+            Producto producto = productoRepository.findById(idProducto).orElse(null);
+            if (producto != null) {
+                producto.setCantidad_disponible(producto.getCantidad_disponible() + diferencia);
+                productoRepository.save(producto);
+            }
         }
     }
 
