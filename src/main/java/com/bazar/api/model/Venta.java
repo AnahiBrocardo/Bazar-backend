@@ -12,7 +12,6 @@ public class Venta {
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "producto_seq")
     @SequenceGenerator(name = "producto_seq", sequenceName = "nombre_secuencia", allocationSize = 1)
     private Long id_venta;
-    private Long codigo_venta;
     private Double total_venta;
     @OneToMany(mappedBy = "venta")
     @JsonManagedReference
@@ -27,18 +26,16 @@ public class Venta {
     public Venta() {
     }
 
-    public Venta(LocalDate fecha_realizacion_venta, Estado estado_venta, Cliente cliente, List<Producto> lista_productos, Double total_venta, Long codigo_venta, Long id_venta) {
+    public Venta(LocalDate fecha_realizacion_venta, Estado estado_venta, Cliente cliente, List<Producto> lista_productos, Double total_venta, Long id_venta) {
         this.fecha_realizacion_venta = fecha_realizacion_venta;
         this.estado_venta = estado_venta;
         this.cliente = cliente;
         this.lista_productos = lista_productos;
         this.total_venta = total_venta;
-        this.codigo_venta = codigo_venta;
         this.id_venta = id_venta;
     }
 
-    public Venta(Long codigo_venta, Double total_venta, List<Producto> lista_productos, Cliente cliente, Estado estado_venta, LocalDate fecha_realizacion_venta) {
-        this.codigo_venta = codigo_venta;
+    public Venta( Double total_venta, List<Producto> lista_productos, Cliente cliente, Estado estado_venta, LocalDate fecha_realizacion_venta) {
         this.total_venta = total_venta;
         this.lista_productos = lista_productos;
         this.cliente = cliente;
@@ -58,9 +55,7 @@ public class Venta {
         return id_venta;
     }
 
-    public Long getCodigo_venta() {
-        return codigo_venta;
-    }
+
 
     public Double getTotal_venta() {
         return total_venta;
@@ -82,9 +77,6 @@ public class Venta {
         this.id_venta = id_venta;
     }
 
-    public void setCodigo_venta(Long codigo_venta) {
-        this.codigo_venta = codigo_venta;
-    }
 
     public void setTotal_venta(Double total_venta) {
         this.total_venta = total_venta;
